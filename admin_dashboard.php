@@ -6,7 +6,7 @@ require 'config.php';
 
 // Verify admin access
 if (!isset($_SESSION['admin_id'])) {
-    header("Location: admin_login.php");
+    header("Location: login.php");
     exit();
 }
 
@@ -23,18 +23,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($action == 'approve') {
             $status = 'confirmed';
             $completed = 0;
+            $meeting_id = mysqli_real_escape_string($conn, $_POST['meeting_id']);
+            
+            $stmt = $conn->prepare("UPDATE appointments SET status = ?, completed = ?, meeting_id = ? WHERE id = ?");
+            $stmt->bind_param("sisi", $status, $completed, $meeting_id, $appointment_id);
+            
+            if ($stmt->execute()) {
+                $success = "Appointment approved successfully with Meeting ID: $meeting_id";
+            } else {
+                $error = "Error updating appointment: ".$conn->error;
+            }
         } else {
             $status = 'cancelled';
             $completed = 1;
-        }
-        
-        $stmt = $conn->prepare("UPDATE appointments SET status = ?, completed = ? WHERE id = ?");
-        $stmt->bind_param("sii", $status, $completed, $appointment_id);
-        
-        if ($stmt->execute()) {
-            $success = "Appointment ".($action == 'approve' ? 'approved' : 'cancelled')." successfully!";
-        } else {
-            $error = "Error updating appointment: ".$conn->error;
+            
+            $stmt = $conn->prepare("UPDATE appointments SET status = ?, completed = ? WHERE id = ?");
+            $stmt->bind_param("sii", $status, $completed, $appointment_id);
+            
+            if ($stmt->execute()) {
+                $success = "Appointment cancelled successfully!";
+            } else {
+                $error = "Error cancelling appointment: ".$conn->error;
+            }
         }
     }
     
@@ -62,6 +72,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     
+    // Handle doctor update
+    if (isset($_POST['update_doctor'])) {
+        $doctor_id = intval($_POST['doctor_id']);
+        $name = mysqli_real_escape_string($conn, $_POST['name']);
+        $specialization = mysqli_real_escape_string($conn, $_POST['specialization']);
+        $bio = mysqli_real_escape_string($conn, $_POST['bio']);
+        $age = intval($_POST['age']);
+        
+        $stmt = $conn->prepare("UPDATE doctors SET name = ?, specialization = ?, bio = ?, age = ? WHERE id = ?");
+        $stmt->bind_param("sssii", $name, $specialization, $bio, $age, $doctor_id);
+        
+        if ($stmt->execute()) {
+            $success = "Doctor updated successfully!";
+        } else {
+            $error = "Error updating doctor: " . $conn->error;
+        }
+    }
+    
     // Handle doctor deletion
     if (isset($_POST['delete_doctor'])) {
         $doctor_id = intval($_POST['doctor_id']);
@@ -83,6 +111,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
     }
+    
+    // Handle admin creation
+    if (isset($_POST['add_admin'])) {
+        $name = mysqli_real_escape_string($conn, $_POST['name']);
+        $email = mysqli_real_escape_string($conn, $_POST['email']);
+        $password = $_POST['password'];
+        $role = mysqli_real_escape_string($conn, $_POST['role']);
+        
+        // Validate email
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = "Invalid email format";
+        } else {
+            // Check if email already exists
+            $check_query = "SELECT id FROM admins WHERE email = '$email'";
+            $result = mysqli_query($conn, $check_query);
+            
+            if (mysqli_num_rows($result) > 0) {
+                $error = "Email already exists";
+            } else {
+                // Hash password
+                $password_hash = password_hash($password, PASSWORD_DEFAULT);
+                
+                $stmt = $conn->prepare("INSERT INTO admins (name, email, password_hash, role) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param("ssss", $name, $email, $password_hash, $role);
+                
+                if ($stmt->execute()) {
+                    $success = "Admin created successfully!";
+                } else {
+                    $error = "Error creating admin: " . $conn->error;
+                }
+            }
+        }
+    }
 }
 
 // Fetch data
@@ -94,6 +155,9 @@ $appointments = mysqli_query($conn, "SELECT a.*, u.name as user_name, u.email as
                                    ORDER BY a.appointment_date, a.appointment_time");
 
 $doctors = mysqli_query($conn, "SELECT * FROM doctors WHERE is_active = 1");
+
+// Fetch admins (for display if you want to show them)
+$admins = mysqli_query($conn, "SELECT id, name, email, role, created_at FROM admins ORDER BY created_at DESC");
 ?>
 
 <!DOCTYPE html>
@@ -104,7 +168,7 @@ $doctors = mysqli_query($conn, "SELECT * FROM doctors WHERE is_active = 1");
     <title>Admin Dashboard | MedConnect</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root {
+       :root {
             --primary: #6c63ff;
             --secondary: #4d44db;
             --light: #f8f9fa;
@@ -410,7 +474,7 @@ $doctors = mysqli_query($conn, "SELECT * FROM doctors WHERE is_active = 1");
             <a href="index.php" style="text-decoration: none; color: inherit;">Med<span>Connect</span></a>
         </div>
         <div class="admin-actions">
-            <span class="admin-name"><?= htmlspecialchars($_SESSION['admin_name']) ?></span>
+            <span class="admin-name"><?= htmlspecialchars($_SESSION['admin_name']) ?> (<?= htmlspecialchars($_SESSION['admin_role']) ?>)</span>
             <a href="logout.php" class="btn btn-outline btn-sm">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </a>
@@ -434,10 +498,18 @@ $doctors = mysqli_query($conn, "SELECT * FROM doctors WHERE is_active = 1");
         
         <div class="dashboard-header">
             <h1>Admin Dashboard</h1>
-            <button onclick="document.getElementById('addDoctorModal').style.display='flex'" 
-                class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> Add Doctor
-            </button>
+            <div>
+                <?php if ($_SESSION['admin_role'] === 'superadmin'): ?>
+                    <button onclick="document.getElementById('addAdminModal').style.display='flex'" 
+                        class="btn btn-primary btn-sm" style="margin-right: 0.5rem;">
+                        <i class="fas fa-user-plus"></i> Add Admin
+                    </button>
+                <?php endif; ?>
+                <button onclick="document.getElementById('addDoctorModal').style.display='flex'" 
+                    class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Add Doctor
+                </button>
+            </div>
         </div>
         
         <!-- Appointments Section -->
@@ -478,9 +550,11 @@ $doctors = mysqli_query($conn, "SELECT * FROM doctors WHERE is_active = 1");
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <form method="POST" style="display: inline;">
+                                        <form method="POST" style="display: flex; align-items: center; gap: 0.5rem;">
                                             <input type="hidden" name="appointment_id" value="<?= $appt['id'] ?>">
                                             <input type="hidden" name="appointment_action" value="approve">
+                                            <input type="text" name="meeting_id" placeholder="Meeting ID" required
+                                                   style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; flex: 1;">
                                             <button type="submit" class="btn btn-success btn-sm">
                                                 <i class="fas fa-check"></i> Approve
                                             </button>
@@ -525,7 +599,15 @@ $doctors = mysqli_query($conn, "SELECT * FROM doctors WHERE is_active = 1");
                                 <td><?= $doctor['age'] ?></td>
                                 <td>
                                     <div class="action-buttons">
-
+                                        <button onclick="openEditDoctorModal(
+                                            <?= $doctor['id'] ?>, 
+                                            '<?= addslashes(htmlspecialchars($doctor['name'])) ?>', 
+                                            '<?= addslashes(htmlspecialchars($doctor['specialization'])) ?>', 
+                                            '<?= addslashes(htmlspecialchars($doctor['bio'])) ?>', 
+                                            <?= $doctor['age'] ?>
+                                        )" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
                                         <form method="POST" style="display: inline;">
                                             <input type="hidden" name="doctor_id" value="<?= $doctor['id'] ?>">
                                             <input type="hidden" name="delete_doctor" value="1">
@@ -542,6 +624,38 @@ $doctors = mysqli_query($conn, "SELECT * FROM doctors WHERE is_active = 1");
                 </table>
             </div>
         </div>
+        
+        <!-- Admins Section (only visible to superadmins) -->
+        <?php if ($_SESSION['admin_role'] === 'superadmin'): ?>
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">System Admins</h2>
+            </div>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while($admin = mysqli_fetch_assoc($admins)): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($admin['name']) ?></td>
+                                <td><?= htmlspecialchars($admin['email']) ?></td>
+                                <td><?= ucfirst($admin['role']) ?></td>
+                                <td><?= date('M j, Y', strtotime($admin['created_at'])) ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     
     <!-- Add Doctor Modal -->
@@ -609,6 +723,41 @@ $doctors = mysqli_query($conn, "SELECT * FROM doctors WHERE is_active = 1");
         </div>
     </div>
     
+    <!-- Add Admin Modal -->
+    <div id="addAdminModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Admin</h3>
+                <span class="close-modal" onclick="document.getElementById('addAdminModal').style.display='none'">&times;</span>
+            </div>
+            <form method="POST">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" class="form-control" required minlength="8">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select name="role" class="form-control" required>
+                        <option value="admin">Admin</option>
+                        <option value="superadmin">Super Admin</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('addAdminModal').style.display='none'">Cancel</button>
+                    <button type="submit" name="add_admin" class="btn btn-primary">Create Admin</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <script>
         // Open edit doctor modal with prefilled data
         function openEditDoctorModal(id, name, specialization, bio, age) {
@@ -627,6 +776,9 @@ $doctors = mysqli_query($conn, "SELECT * FROM doctors WHERE is_active = 1");
             }
             if (event.target == document.getElementById('editDoctorModal')) {
                 document.getElementById('editDoctorModal').style.display = "none";
+            }
+            if (event.target == document.getElementById('addAdminModal')) {
+                document.getElementById('addAdminModal').style.display = "none";
             }
         }
     </script>
