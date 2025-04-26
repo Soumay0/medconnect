@@ -4,7 +4,7 @@ require 'config.php';
 
 // Redirect if already logged in
 if (isset($_SESSION['user_id'])) {
-    header("Location: " . ($_GET['from'] ? 'book.php' : 'dashboard.php'));
+    header("Location: " . ($_GET['from'] ? 'index.php' : 'dashboard.php'));
     exit();
 }
 if (isset($_SESSION['admin_id'])) {
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
-            header("Location: " . ($_GET['from'] ? 'book.php' : 'dashboard.php'));
+            header("Location: " . ($_GET['from'] ? 'index.php' : 'dashboard.php'));
             exit();
         }
     }
@@ -47,13 +47,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $error = "Invalid email or password!";
 }
 ?>
-?>
 
-<!-- COPY ALL YOUR EXISTING CSS FROM book.php -->
 <!DOCTYPE html>
 <html>
 <head>
     <title>Login | MedConnect</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <style>
     /* Base Styles */
     :root {
@@ -107,85 +106,104 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     .logo span {
       color: var(--accent);
     }
-    
-    .nav-links {
-      display: flex;
-      gap: 2rem;
-    }
-    
     .nav-links a {
-      text-decoration: none;
-      color: var(--dark);
-      font-weight: 500;
-      position: relative;
-      transition: all 0.3s ease;
-    }
-    
-    .nav-links a:hover {
-      color: var(--primary);
-    }
-    
-    .nav-links a::after {
-      content: '';
-      position: absolute;
-      width: 0;
-      height: 2px;
-      bottom: -5px;
-      left: 0;
-      background-color: var(--primary);
-      transition: width 0.3s ease;
-    }
-    
-    .nav-links a:hover::after {
-      width: 100%;
-    }
+  margin: 0 5px; /* This gives spacing between each link */
+  text-decoration: none;
+  color: #111;
+  font-weight: 500;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
     
     .auth-buttons .btn {
       margin-left: 1rem;
     }
     
-    /* Hero Section */
-    .hero {
-      display: flex;
-      align-items: center;
-      min-height: 100vh;
-      padding: 0 5%;
-      padding-top: 6rem;
-    }
-    
-    .hero-content {
-      flex: 1;
-      padding-right: 2rem;
-      animation: fadeInLeft 0.8s ease-out;
-    }
-    
-    .hero-image {
-      flex: 1;
+    /* Login Container */
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 2.5rem;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+      transform: translateY(20px);
+      opacity: 0;
+      animation: fadeInUp 0.6s 0.3s forwards;
       position: relative;
-      animation: fadeInRight 0.8s ease-out;
+      overflow: hidden;
     }
     
-    .hero h1 {
-      font-size: 3.5rem;
-      font-weight: 700;
+    .login-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+    }
+    
+    .login-container h2 {
+      text-align: center;
       margin-bottom: 1.5rem;
-      line-height: 1.2;
-    }
-    
-    .hero h1 span {
       color: var(--primary);
+      font-size: 1.8rem;
     }
     
-    .hero p {
-      font-size: 1.2rem;
+    .error { 
+      color: var(--accent);
+      text-align: center;
+      margin-bottom: 1rem;
+      animation: shake 0.5s;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 0.8rem 1rem 0.8rem 40px;
+      border: 2px solid #e9ecef;
+      border-radius: 10px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    .form-group input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
+      outline: none;
+    }
+    
+    .form-group::before {
+      font-family: 'Font Awesome 5 Free';
+      font-weight: 900;
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
       color: var(--gray);
-      margin-bottom: 2rem;
-      max-width: 600px;
     }
     
-    .hero-buttons {
-      display: flex;
-      gap: 1rem;
+    .form-group.email::before {
+      content: '\f0e0';
+    }
+    
+    .form-group.password::before {
+      content: '\f023';
     }
     
     .btn {
@@ -224,105 +242,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       transform: translateY(-3px);
     }
     
-    .doctor-illustration {
-      width: 100%;
-      max-width: 600px;
-      height: auto;
-      border-radius: 20px;
-      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
-      transform: perspective(1000px) rotateY(-10deg);
-      transition: transform 0.5s ease;
-    }
-    
-    .doctor-illustration:hover {
-      transform: perspective(1000px) rotateY(0deg);
-    }
-    
-    /* Booking Form */
-    .booking-form-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 2000;
-      opacity: 0;
-      pointer-events: none;
-      transition: all 0.3s ease;
-    }
-    
-    .booking-form-container.active {
-      opacity: 1;
-      pointer-events: all;
-    }
-    
-    .booking-form {
-      background: white;
-      border-radius: 20px;
-      width: 90%;
-      max-width: 500px;
-      padding: 2.5rem;
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-      transform: translateY(20px);
-      transition: all 0.3s ease;
-      position: relative;
-    }
-    
-    .booking-form-container.active .booking-form {
-      transform: translateY(0);
-    }
-    
-    .close-form {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      font-size: 1.5rem;
-      cursor: pointer;
-      color: var(--gray);
-      transition: all 0.3s ease;
-    }
-    
-    .close-form:hover {
-      color: var(--dark);
-      transform: rotate(90deg);
-    }
-    
-    .form-title {
-      font-size: 1.8rem;
-      margin-bottom: 1.5rem;
-      color: var(--primary);
-    }
-    
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-    
-    .form-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-      color: var(--dark);
-    }
-    
-    .form-control {
-      width: 100%;
-      padding: 0.8rem 1rem;
-      border: 2px solid #e9ecef;
-      border-radius: 10px;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-    }
-    
-    .form-control:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
-      outline: none;
-    }
-    
     .submit-btn {
       width: 100%;
       padding: 1rem;
@@ -334,7 +253,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
-      margin-top: 1rem;
+      margin-top: 0.5rem;
+      position: relative;
+      overflow: hidden;
     }
     
     .submit-btn:hover {
@@ -343,164 +264,87 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       box-shadow: 0 10px 20px rgba(108, 99, 255, 0.3);
     }
     
-    /* Chatbot */
-    .chatbot-container {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      z-index: 1000;
+    .submit-btn:active {
+      transform: translateY(0);
     }
     
-    .chatbot-btn {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: var(--primary);
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      box-shadow: 0 10px 25px rgba(108, 99, 255, 0.3);
-      transition: all 0.3s ease;
-      border: none;
-    }
-    
-    .chatbot-btn:hover {
-      transform: scale(1.1);
-      background: var(--secondary);
-    }
-    
-    .chatbot-btn i {
-      font-size: 1.5rem;
-    }
-    
-    .chatbot-box {
+    .submit-btn::after {
+      content: '';
       position: absolute;
-      right: 0;
-      bottom: 80px;
-      width: 350px;
-      background: white;
-      border-radius: 15px;
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-      transform: scale(0.5);
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.5);
       opacity: 0;
-      pointer-events: none;
-      transition: all 0.3s ease;
-      overflow: hidden;
+      border-radius: 100%;
+      transform: scale(1, 1) translate(-50%);
+      transform-origin: 50% 50%;
     }
     
-    .chatbot-box.active {
-      transform: scale(1);
-      opacity: 1;
-      pointer-events: all;
+    .submit-btn:focus:not(:active)::after {
+      animation: ripple 1s ease-out;
     }
     
-    .chatbot-header {
-      background: var(--primary);
-      color: white;
-      padding: 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .chatbot-header h3 {
-      font-weight: 600;
-    }
-    
-    .close-chatbot {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
-    
-    .chatbot-messages {
-      height: 300px;
-      padding: 1rem;
-      overflow-y: auto;
-    }
-    
-    .chatbot-message {
-      margin-bottom: 1rem;
-      max-width: 80%;
-      padding: 0.8rem 1rem;
-      border-radius: 15px;
+    .login-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: var(--gray);
       font-size: 0.9rem;
-      line-height: 1.4;
-      animation: fadeIn 0.3s ease-out;
     }
     
-    .bot-message {
-      background: #f1f1f1;
-      color: var(--dark);
-      border-bottom-left-radius: 5px;
-      align-self: flex-start;
+    .login-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
     }
     
-    .user-message {
-      background: var(--primary);
-      color: white;
-      border-bottom-right-radius: 5px;
-      align-self: flex-end;
-      margin-left: auto;
+    .login-footer a:hover {
+      color: var(--secondary);
+      text-decoration: underline;
     }
     
-    .chatbot-input {
-      display: flex;
-      padding: 1rem;
+    .admin-hint {
+      font-size: 0.8rem;
+      color: var(--gray);
+      text-align: center;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
       border-top: 1px solid #eee;
     }
     
-    .chatbot-input input {
-      flex: 1;
-      padding: 0.8rem;
-      border: 1px solid #ddd;
-      border-radius: 30px;
-      outline: none;
-      font-size: 0.9rem;
-    }
-    
-    .chatbot-input button {
-      margin-left: 0.5rem;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-    
-    .chatbot-input button:hover {
-      background: var(--secondary);
-    }
-    
     /* Animations */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    @keyframes fadeInUp {
+      from { 
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     
-    @keyframes fadeInLeft {
-      from { opacity: 0; transform: translateX(-50px); }
-      to { opacity: 1; transform: translateX(0); }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+      20%, 40%, 60%, 80% { transform: translateX(5px); }
     }
     
-    @keyframes fadeInRight {
-      from { opacity: 0; transform: translateX(50px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
-    
-    @keyframes slideDown {
-      from { opacity: 0; transform: translateY(-50px); }
-      to { opacity: 1; transform: translateY(0); }
+    @keyframes ripple {
+      0% {
+        transform: scale(0, 0);
+        opacity: 1;
+      }
+      20% {
+        transform: scale(25, 25);
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: scale(40, 40);
+      }
     }
     
     @keyframes pulse {
@@ -511,83 +355,84 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     /* Responsive */
     @media (max-width: 768px) {
-      .hero {
-        flex-direction: column;
-        padding-top: 8rem;
-        text-align: center;
-      }
-      
-      .hero-content {
-        padding-right: 0;
-        margin-bottom: 3rem;
-      }
-      
-      .hero-buttons {
-        justify-content: center;
+      .login-container {
+        margin: 120px auto;
+        width: 90%;
       }
       
       .nav-links {
         display: none;
       }
-      
-      .hero h1 {
-        font-size: 2.5rem;
-      }
-      
-      .chatbot-box {
-        width: 300px;
-      }
     }
-    .admin-hint {
-    font-size: 0.8rem;
-    color: var(--gray);
-    text-align: center;
-    margin-top: 1rem;
-}
-  </style>
-    <style>
-        .login-container {
-            max-width: 400px;
-            margin: 100px auto;
-            padding: 2rem;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        .error { color: var(--accent); }
     </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Copy your header from book.php here (without auth buttons) -->
-    <header>
-    <div class="logo">
+    
+<header>
+  <div class="logo">
      <a href = "index.php"> Med<span>Connect</span></a>
     </div>
     <nav class="nav-links">
-      <a href="index.php">Home</a>
-      <a href="services.php">Services</a>
-      <a href="doctors.php">Doctors</a>
-      <a href="about.php">About</a>
+        <a href="index.php">Home</a>
+        <a href="services.php">Services</a>
+        <a href="doctors.php">Doctors</a>
+        
+        <a href="about.php">About</a>
+
     </nav>
     <div class="auth-buttons">
-      <a href="login.php" class="btn btn-outline">Login</a>
-      <a href="signup.php" class="btn btn-primary">Sign Up</a>
+        <?php if(isset($_SESSION['user_id'])): ?>
+            <a href="dashboard.php" class="btn btn-outline">Dashboard</a>
+            <a href="logout.php" class="btn btn-primary">Logout</a>
+        <?php else: ?>
+            <a href="login.php" class="btn btn-outline">Login</a>
+            <a href="signup.php" class="btn btn-primary">Sign Up</a>
+        <?php endif; ?>
     </div>
-  </header> 
-  <div class="login-container">
-    <h2>Login to MedConnect</h2>
-    <?php if(isset($error)) echo "<p class='error'>$error</p>"; ?>
+</header> 
+  
+  <div class="login-container animate__animated animate__fadeIn">
+    <h2 class="animate__animated animate__fadeInDown">Login to MedConnect</h2>
+    <?php if(isset($error)) echo "<p class='error animate__animated animate__shakeX'>$error</p>"; ?>
     <form method="POST">
-        <div class="form-group">
+        <div class="form-group email">
             <input type="email" name="email" placeholder="Email" required class="form-control">
         </div>
-        <div class="form-group">
+        <div class="form-group password">
             <input type="password" name="password" placeholder="Password" required class="form-control">
         </div>
-        <button type="submit" class="submit-btn">Login</button>
+        <button type="submit" class="submit-btn animate__animated animate__pulse animate__delay-1s">Login</button>
     </form>
-    <p>New user? <a href="signup.php">Sign up here</a></p>
-    
+    <div class="login-footer">
+        <p>New user? <a href="signup.php">Sign up here</a></p>
+    </div>
     <p class="admin-hint">Admins: Use your admin credentials</p>
-</div>
+  </div>
+
+  <script>
+    // Add focus effects to form inputs
+    document.querySelectorAll('.form-control').forEach(input => {
+      input.addEventListener('focus', function() {
+        this.parentElement.style.transform = 'scale(1.02)';
+      });
+      input.addEventListener('blur', function() {
+        this.parentElement.style.transform = 'scale(1)';
+      });
+    });
+
+    // Add ripple effect to submit button
+    const submitBtn = document.querySelector('.submit-btn');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        this.classList.add('animate__animated', 'animate__pulse');
+        setTimeout(() => {
+          this.classList.remove('animate__animated', 'animate__pulse');
+          this.form.submit();
+        }, 500);
+      });
+    }
+  </script>
+</body>
 </html>
